@@ -1,0 +1,36 @@
+%% test-luatexja.tex
+%% =================
+%% Typesetting test for LuaLaTeX + LuaTeX-ja, yoko: the design of
+%% test-ptex.tex (13Q, 23H line feed, 42 chars x 33 lines) on ltjbook.
+%%
+%%   lualatex test-luatexja.tex
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: 42 chars x 33 lines, no overflow.
+%%   * SHG-POS OK on pages 1 (odd) and 2 (even).
+%%   * In the PDF, every character of the body text sits in a square.
+\documentclass[b5paper]{ltjbook}
+\setlength\paperwidth{182mm}
+\setlength\paperheight{230mm}
+\setlength\pagewidth{\paperwidth}
+\setlength\pageheight{\paperheight}
+\makeatletter
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize{\dimexpr13\jQ*1000000/962216\relax}{23\jH}}
+\normalsize
+\setlength\textwidth{\dimexpr13\jQ*42\relax}
+\setlength\textheight{\dimexpr23\jH*32+13\jQ\relax}
+\setlength\topskip{13\jQ}
+\setlength\topmargin{\dimexpr25mm-1in-\headheight-\headsep-\topskip+13\jQ*88/100\relax}
+\setlength\oddsidemargin{\dimexpr25mm-1in\relax}
+\setlength\evensidemargin{\dimexpr\paperwidth-2in-\oddsidemargin-\textwidth\relax}
+\setlength\parindent{1\zw}
+\makeatother
+\usepackage{showhanmengrid}
+\input{test-common}
+\SHGexpect{yoko}{42}{33}{zero}{zero}
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\newpage
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\end{document}

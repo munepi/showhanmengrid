@@ -1,0 +1,274 @@
+%%
+%% showhanmengrid.sty
+%% ==================
+%% Show the hanmen (kihon hanmen) grid of Japanese text on every page.
+%%
+%% Copyright (c) 2026 Munehiro Yamamoto <munepixyz@gmail.com>
+%%
+%% This package is licensed under the conditions of the LaTeX Project
+%% Public License, either version 1.3c of this license or (at your
+%% option) any later version.  The latest version of this license is in
+%%   https://www.latex-project.org/lppl.txt
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%% The Current Maintainer of this work is Munehiro Yamamoto.
+%%
+%% What this package does
+%%   The hanmen (kihon hanmen, the basic text block) of Japanese
+%%   typesetting is built from the character size, the number of
+%%   characters per line, the number of lines per page and the line
+%%   feed.  This package draws, in the background of every page,
+%%     (1) one square of 1zw x 1zw for each character position
+%%         ("chars" per line x "lines" per page), and the frame of the
+%%         whole grid, in cyan;
+%%     (2) the part of the text area that does not fit the grid (the
+%%         "overflow") in magenta: a \textwidth that is not a multiple
+%%         of 1zw, or a \textheight that is not \topskip plus a
+%%         multiple of \baselineskip.  The overflow is distributed into
+%%         inter-character (or inter-line) spaces, i.e. the text is not
+%%         set solid ("beta-gumi").
+%%   Both horizontal (yoko) and vertical (tate) writing are supported.
+%%
+%% Supported formats/engines
+%%   * pLaTeX, upLaTeX (+ dvipdfmx)
+%%   * LuaLaTeX + LuaTeX-ja
+%%   LaTeX2e 2025-06-01 or later is required.
+%%
+%% Usage
+%%   \usepackage{showhanmengrid}
+%%   \usepackage[color=blue!50, overflow=false]{showhanmengrid}
+%%   \showhanmengridsetup{rulewidth=0.2pt}   %% in the preamble
+%%
+%% Keys
+%%   color=<color>          grid color (default: cyan)
+%%   overflowcolor=<color>  overflow color (default: magenta)
+%%   rulewidth=<dimen>      width of the grid lines (default: 0.1pt)
+%%   frame=<true|false>     draw the frame of the whole grid (default: true)
+%%   overflow=<true|false>  draw the overflow (default: true)
+%%   chars=<int>            characters per line (default: from \textwidth)
+%%   lines=<int>            lines per page (default: from \textheight)
+%%   ascent=<dimen>         height of the character face above the
+%%                          baseline in yoko (default: 0.88zw)
+%%
+\NeedsTeXFormat{LaTeX2e}[2025-06-01]
+\ProvidesPackage{showhanmengrid}
+  [2026/10/25 v1.0 show the hanmen grid of Japanese text]
+
+\RequirePackage{xcolor}
+
+%% Keys
+\newif\ifshg@frame    \shg@frametrue
+\newif\ifshg@overflow \shg@overflowtrue
+\def\shg@color{cyan}
+\def\shg@overflowcolor{magenta}
+\def\shg@rulewidth{0.1pt}
+\def\shg@chars@opt{}
+\def\shg@lines@opt{}
+\def\shg@ascent@opt{}
+\DeclareKeys[showhanmengrid]{
+  color.store         = \shg@color,
+  overflowcolor.store = \shg@overflowcolor,
+  rulewidth.store     = \shg@rulewidth,
+  frame.if            = shg@frame,
+  overflow.if         = shg@overflow,
+  chars.store         = \shg@chars@opt,
+  lines.store         = \shg@lines@opt,
+  ascent.store        = \shg@ascent@opt,
+}
+\ProcessKeyOptions[showhanmengrid]
+\newcommand\showhanmengridsetup[1]{\SetKeys[showhanmengrid]{#1}}
+
+\def\shg@info{\PackageInfo{showhanmengrid}}
+\def\shg@warning{\PackageWarningNoLine{showhanmengrid}}
+
+%% Engine: the unit of 1zw and the writing direction (the branches are
+%% arguments, not conditional text, since they contain \if... tokens)
+\let\shg@engine\relax
+\ifdefined\ptexversion\expandafter\@firstofone\else\expandafter\@gobble\fi{%
+  \def\shg@engine{ptex}%
+  \def\shg@zwunit{zw}%
+  \def\shg@iftate{\iftdir}}
+\ifdefined\ltjgetparameter\expandafter\@firstofone\else\expandafter\@gobble\fi{%
+  \def\shg@engine{luatexja}%
+  \def\shg@zwunit{\zw}%
+  \def\shg@iftate{\ifnum\ltjgetparameter{direction}=3 }}
+\ifx\shg@engine\relax
+  \shg@warning{Neither pTeX nor LuaTeX-ja found;\MessageBreak
+    the hanmen grid will not be drawn}%
+  \expandafter\endinput
+\fi
+
+\newdimen\shg@zw           % 1zw of \normalsize
+\newdimen\shg@bs           % line feed (\baselineskip of \normalsize)
+\newdimen\shg@ascent       % yoko: character face above the baseline
+\newdimen\shg@gridwd       % horizontal size of the grid
+\newdimen\shg@gridht       % vertical size of the grid
+\newdimen\shg@overwd       % horizontal overflow
+\newdimen\shg@overht       % vertical overflow
+\newdimen\shg@textwd       % \textwidth (pLaTeX swaps \textwidth and
+\newdimen\shg@textht       % \textheight while shipping out a tate page)
+\newcount\shg@chars        % characters per line
+\newcount\shg@lines        % lines per page
+\newif\ifshg@tate
+
+%% \shg@floordiv{<count>}{<dimen a>}{<dimen b>}: <count> = floor(a/b);
+%% a is allowed to fall short of a multiple of b by 0.01pt at most
+%% (e.g. jlreq adds 0.0001pt to \textwidth)
+\def\shg@floordiv#1#2#3{%
+  #1=\numexpr\dimexpr#2+0.01pt\relax/\dimexpr#3\relax\relax
+  \ifdim\dimexpr#3*#1\relax>\dimexpr#2+0.01pt\relax
+    \advance#1\m@ne
+  \fi}
+%% \shg@clean{<dimen>}: ignore a remainder of less than 0.01pt
+\def\shg@clean#1{%
+  \ifdim\ifdim#1<\z@-\fi#1<0.01pt #1=\z@\fi}
+
+%% Compute the grid at the end of \begin{document}, after the class has
+%% set the writing direction
+\AddToHook{begindocument/end}{%
+  \begingroup
+    \normalsize
+    \global\shg@zw=1\shg@zwunit
+    \global\shg@bs=\baselineskip
+    \shg@iftate\global\shg@tatetrue\else\global\shg@tatefalse\fi
+  \endgroup
+  \shg@textwd=\textwidth
+  \shg@textht=\textheight
+  \ifx\shg@ascent@opt\@empty
+    \shg@ascent=.88\shg@zw
+  \else
+    \shg@ascent=\dimexpr\shg@ascent@opt\relax
+  \fi
+  %% \textwidth is the length of a line and \textheight the extent in
+  %% which lines are stacked, both in yoko and in tate
+  \ifx\shg@chars@opt\@empty
+    \shg@floordiv\shg@chars\shg@textwd\shg@zw
+  \else
+    \shg@chars=\shg@chars@opt\relax
+  \fi
+  \ifx\shg@lines@opt\@empty
+    \shg@floordiv\shg@lines{\shg@textht-\topskip}\shg@bs
+    \advance\shg@lines\@ne
+  \else
+    \shg@lines=\shg@lines@opt\relax
+  \fi
+  \shg@overwd=\dimexpr\shg@textwd-\shg@zw*\shg@chars\relax
+  \shg@overht=\dimexpr\shg@textht-\topskip-\shg@bs*(\shg@lines-1)\relax
+  \shg@clean\shg@overwd
+  \shg@clean\shg@overht
+  \ifshg@tate
+    \shg@gridwd=\dimexpr\shg@bs*(\shg@lines-1)+\shg@zw\relax
+    \shg@gridht=\dimexpr\shg@zw*\shg@chars\relax
+  \else
+    \shg@gridwd=\dimexpr\shg@zw*\shg@chars\relax
+    \shg@gridht=\dimexpr\shg@bs*(\shg@lines-1)+\shg@zw\relax
+  \fi
+  \shg@info{\ifshg@tate tate\else yoko\fi:
+    \the\shg@chars\space chars x \the\shg@lines\space lines,\MessageBreak
+    1zw=\the\shg@zw, line feed=\the\shg@bs,\MessageBreak
+    grid=\the\shg@gridwd\space x \the\shg@gridht}%
+  \ifdim\shg@overwd=\z@\else
+    \shg@info{overflow along the line: \the\shg@overwd\MessageBreak
+      (\shg@inzw\shg@overwd zw); the text is not set solid\MessageBreak
+      and inter-character spaces will be stretched}%
+  \fi
+  \ifdim\shg@overht=\z@\else
+    \shg@info{overflow across the lines: \the\shg@overht\MessageBreak
+      (\shg@inzw\shg@overht zw); the page will not be filled\MessageBreak
+      by whole lines}%
+  \fi
+  \ifnum\numexpr\shg@chars*\shg@lines\relax>\z@
+    \AddToHook{shipout/background}{\shg@draw}%
+  \else
+    \shg@warning{No room for the grid (\the\shg@chars\space chars x
+      \the\shg@lines\space lines)}%
+  \fi}
+
+%% \shg@inzw<dimen>: <dimen> in zw, rounded to 2 decimal places
+\def\shg@inzw#1{\fpeval{round(#1/\shg@zw,2)}}
+
+%% The side margin of the current page, as the output routine chooses
+%% it.  (pLaTeX's \@outputpage has a tate branch that would swap the two
+%% margins, but it tests \iftdir inside \vbox{\yoko ...}, so it never
+%% applies; both engines therefore follow the LaTeX kernel.)
+\def\shg@sidemargin{%
+  \if@twoside
+    \ifodd\value{page}\oddsidemargin\else\evensidemargin\fi
+  \else
+    \oddsidemargin
+  \fi}
+
+%% Top left corner of the text area, from the top left corner of the page
+\def\shg@textleft{\dimexpr1in+\hoffset+\shg@sidemargin\relax}
+\def\shg@texttop{\dimexpr1in+\voffset+\topmargin+\headheight+\headsep\relax}
+
+%% Top left corner of the grid, from the top left corner of the page.
+%%   yoko: the grid begins at the top of the character face of the first
+%%         line, i.e. \topskip minus the ascent below the top of the
+%%         text area.
+%%   tate: lines run from right to left; the baseline of the first line
+%%         is \topskip left of the right edge of the text area, and the
+%%         character face extends 0.5zw on each side of the baseline.
+\def\shg@gridleft{%
+  \ifshg@tate
+    \dimexpr\shg@textleft+\shg@textht-\topskip+.5\shg@zw-\shg@gridwd\relax
+  \else
+    \shg@textleft
+  \fi}
+\def\shg@gridtop{%
+  \ifshg@tate
+    \shg@texttop
+  \else
+    \dimexpr\shg@texttop+\topskip-\shg@ascent\relax
+  \fi}
+
+%% Draw the grid; the picture of shipout/background has its origin at
+%% the top left corner of the page, and y grows upwards
+\def\shg@draw{%
+  \begingroup
+  \setlength\fboxrule{\shg@rulewidth}%
+  \put(\shg@gridleft,-\shg@gridtop){%
+    \ifshg@overflow
+      \color{\shg@overflowcolor}%
+      \ifshg@tate\shg@draw@overflow@tate\else\shg@draw@overflow@yoko\fi
+    \fi
+    \color{\shg@color}%
+    \ifshg@frame
+      \put(0,-\shg@gridht){\framebox(\shg@gridwd,\shg@gridht){}}%
+    \fi
+    \ifshg@tate\shg@draw@tate\else\shg@draw@yoko\fi}%
+  \endgroup}
+
+%% The squares; (0,0) is the top left corner of the grid
+\def\shg@draw@yoko{%
+  \multiput(0,-\shg@zw)(0,-\shg@bs){\shg@lines}{%
+    \multiput(0,0)(\shg@zw,0){\shg@chars}{%
+      \framebox(\shg@zw,\shg@zw){}}}}
+\def\shg@draw@tate{%
+  \multiput(\dimexpr\shg@gridwd-\shg@zw\relax,0)(-\shg@bs,0){\shg@lines}{%
+    \multiput(0,-\shg@zw)(0,-\shg@zw){\shg@chars}{%
+      \framebox(\shg@zw,\shg@zw){}}}}
+
+%% The overflow: the part along the line goes after the end of the lines
+%% (right in yoko, bottom in tate), and the part across the lines goes
+%% after the last line (bottom in yoko, left in tate)
+\def\shg@overwd@pos{\ifdim\shg@overwd>\z@\shg@overwd\else\z@\fi}
+\def\shg@draw@overflow@yoko{%
+  \ifdim\shg@overwd>\z@
+    \put(\shg@gridwd,-\shg@gridht){\rule{\shg@overwd}{\shg@gridht}}%
+  \fi
+  \ifdim\shg@overht>\z@
+    \put(0,-\dimexpr\shg@gridht+\shg@overht\relax)%
+      {\rule{\dimexpr\shg@gridwd+\shg@overwd@pos\relax}{\shg@overht}}%
+  \fi}
+\def\shg@draw@overflow@tate{%
+  \ifdim\shg@overwd>\z@
+    \put(0,-\dimexpr\shg@gridht+\shg@overwd\relax)%
+      {\rule{\shg@gridwd}{\shg@overwd}}%
+  \fi
+  \ifdim\shg@overht>\z@
+    \put(-\shg@overht,-\dimexpr\shg@gridht+\shg@overwd@pos\relax)%
+      {\rule{\shg@overht}{\dimexpr\shg@gridht+\shg@overwd@pos\relax}}%
+  \fi}
+
+\endinput

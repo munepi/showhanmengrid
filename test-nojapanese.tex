@@ -1,0 +1,14 @@
+%% test-nojapanese.tex
+%% ===================
+%% Without pTeX or LuaTeX-ja (pdfLaTeX, XeLaTeX, or LuaLaTeX without
+%% LuaTeX-ja), the package warns and does nothing.
+%%
+%%   pdflatex test-nojapanese.tex
+%%
+%% What to check:
+%%   * The warning "Neither pTeX nor LuaTeX-ja found" and no error.
+\documentclass{article}
+\usepackage{showhanmengrid}
+\begin{document}
+Text.
+\end{document}

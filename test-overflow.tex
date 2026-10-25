@@ -1,0 +1,36 @@
+%% test-overflow.tex
+%% =================
+%% Overflow test with the default layout of the standard Japanese
+%% classes.  The class is given by \CLS (default: jbook):
+%%
+%%   platex   -jobname=test-overflow-jbook   "\def\CLS{jbook}\input test-overflow.tex"
+%%   uplatex  -jobname=test-overflow-ujbook  "\def\CLS{ujbook}\input test-overflow.tex"
+%%   lualatex -jobname=test-overflow-ltjbook "\def\CLS{ltjbook}\input test-overflow.tex"
+%%   (also jsbook on (u)platex, ltjsbook on lualatex)
+%%
+%% What to check:
+%%   * jbook, ujbook, ltjbook: \textwidth is 327pt (as in the standard
+%%     book class), which is not a multiple of 1zw, and \textheight is
+%%     truncated to whole points by \@settopoint; so there is an
+%%     overflow both along and across the lines (SHG-EXPECT OK), drawn
+%%     in magenta in the PDF.
+%%   * jsbook, ltjsbook: \textwidth is a multiple of 1zw (no overflow
+%%     along the lines).
+%%   * SHG-POS OK on pages 1 and 2.
+\ifdefined\CLS\else\def\CLS{jbook}\fi
+\documentclass{\CLS}
+\usepackage{showhanmengrid}
+\input{test-common}
+\makeatletter
+\@expandtwoargs\in@{,\CLS,}{,jsbook,ltjsbook,}
+\ifin@
+  \SHGexpect{yoko}{40}{42}{zero}{any}
+\else
+  \SHGexpect{yoko}{33}{39}{positive}{positive}
+\fi
+\makeatother
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\newpage
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\end{document}

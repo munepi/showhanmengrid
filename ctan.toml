@@ -1,0 +1,45 @@
+# ctan.toml -- metadata for "ctango upload".
+# Keys follow the CTAN submission API: https://ctan.org/help/submit
+# uploader/email are taken from ~/.config/ctango/config.toml or git config.
+
+pkg         = "showhanmengrid"
+ctanPath    = "/macros/latex/contrib/showhanmengrid"
+summary     = "Show the hanmen grid of Japanese text and its overflow on every page"
+description = '''
+<p>
+The hanmen (the basic text block) of Japanese typesetting is built from
+the character size, the number of characters per line, the number of
+lines per page and the line feed.  This package draws, in the background
+of every page, one square for each character position of the hanmen, so
+that you can check that every character of the body text sits in its
+square.
+</p>
+<p>
+It also draws in magenta the part of the text area that does not fit
+the grid: a <code>\textwidth</code> that is not a multiple of the
+character size, or a <code>\textheight</code> that is not filled by
+whole lines.  Such a text area, common when only the four margins are
+given, stretches inter-character spaces, i.e. the text is not set solid.
+Both horizontal (yoko) and vertical (tate) writing are supported.
+</p>
+<p>
+Supported formats/engines: <code>platex</code>, <code>uplatex</code>
+(with <code>dvipdfmx</code>), <code>lualatex</code> with LuaTeX-ja
+(LaTeX2e 2025-06-01 or later).
+</p>
+'''
+author      = ["Munehiro Yamamoto"]
+license     = ["lppl1.3c"]
+topic       = ["japanese", "layout-show", "doc-debug"]
+# home        = "https://..."
+bugtracker  = ["https://github.com/munepi/showhanmengrid/issues"]
+# support     = "https://..."
+repository  = ["https://github.com/munepi/showhanmengrid"]
+# development = "https://..."
+
+archive     = "showhanmengrid.zip"  # built by "make ctanzip"
+
+# The version is read from this file (\ProvidesPackage / \ProvidesExplPackage).
+# Add pattern = '...' to use your own regular expression (first group = version).
+[version]
+file        = "showhanmengrid.sty"

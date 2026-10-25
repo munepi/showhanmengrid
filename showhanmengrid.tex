@@ -1,0 +1,207 @@
+%% showhanmengrid.tex -- documentation for the showhanmengrid package
+%%
+%% Copyright (c) 2026 Munehiro Yamamoto <munepixyz@gmail.com>
+%% License: LPPL 1.3c or later
+%%
+%% Build: make showhanmengrid.pdf
+%%   (builds the example pages from the tests, then runs lualatex twice)
+\documentclass{article}
+\usepackage[margin=28mm]{geometry}
+\usepackage{luatexja}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage[colorlinks, allcolors=blue!50!black]{hyperref}
+\newcommand*\shgversion{v1.0 (2026/10/25)}
+\newcommand*\cs[1]{\texttt{\char`\\#1}}
+\newcommand*\pkg[1]{\textsf{#1}}
+\newcommand*\key[1]{\texttt{#1}}
+\newcommand\example[2]{%
+  \begin{minipage}[t]{.48\linewidth}
+    \centering
+    \IfFileExists{#1}%
+      {\fbox{\includegraphics[page=1,width=.9\linewidth]{#1}}}%
+      {\fbox{\parbox[c][.3\textheight][c]{.9\linewidth}{\centering
+         \ttfamily #1\\(run \texttt{make test} first)}}}%
+    \par\smallskip{\small #2}
+  \end{minipage}}
+
+\title{The \pkg{showhanmengrid} package\\
+  \large Show the hanmen grid of Japanese text and its overflow on every page}
+\author{Munehiro Yamamoto\\
+  \url{https://github.com/munepi/showhanmengrid}}
+\date{\shgversion}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+The \emph{hanmen} (kihon hanmen, 基本版面), the basic text block of
+Japanese typesetting, is built from four values: the character size
+(1\,zw, the width of a full-width character), the number of characters
+per line, the number of lines per page and the line feed.  When
+\begin{itemize}
+\item \cs{textwidth} is a multiple of 1\,zw, and
+\item \cs{textheight} is \cs{topskip} plus a multiple of
+  \cs{baselineskip},
+\end{itemize}
+every character of the body text sits on a fixed grid: the text is
+\emph{set solid} (\emph{beta-gumi}, ベタ組み).
+
+The \pkg{showhanmengrid} package draws, in the background of every page,
+\begin{enumerate}
+\item \textcolor{cyan}{in cyan}, one square of 1\,zw $\times$ 1\,zw for
+  each character position, and the frame of the whole grid;
+\item \textcolor{magenta}{in magenta}, the \emph{overflow}: the part of
+  the text area that does not fit the grid.
+\end{enumerate}
+Both horizontal (yoko, 横組み) and vertical (tate, 縦組み) writing are
+supported.
+
+\paragraph{Supported formats/engines}
+pLaTeX and upLaTeX (with dvipdfmx), and LuaLaTeX with LuaTeX-ja.
+LaTeX2e 2025-06-01 or later is required.  With any other engine
+(pdfLaTeX, XeLaTeX, or LuaLaTeX without LuaTeX-ja) the package issues a
+warning and does nothing.
+
+\section{Usage}
+
+\begin{verbatim}
+\usepackage{showhanmengrid}
+\end{verbatim}
+Nothing else is needed: the grid is computed at \verb|\begin{document}|
+from the layout parameters of the class, and the writing direction is
+taken from the document (\cs{tate} of pTeX, \texttt{direction=3} of
+LuaTeX-ja).  Keys can be given as package options or with
+\cs{showhanmengridsetup} in the preamble:
+\begin{verbatim}
+\usepackage[color=blue!50, overflow=false]{showhanmengrid}
+\showhanmengridsetup{rulewidth=0.2pt}
+\end{verbatim}
+
+\begin{center}
+\begin{tabular}{lll}
+  \hline
+  Key & Default & Description\\
+  \hline
+  \key{color}         & \texttt{cyan}    & color of the grid\\
+  \key{overflowcolor} & \texttt{magenta} & color of the overflow\\
+  \key{rulewidth}     & \texttt{0.1pt}   & width of the grid lines\\
+  \key{frame}         & \texttt{true}    & draw the frame of the whole grid\\
+  \key{overflow}      & \texttt{true}    & draw the overflow\\
+  \key{chars}         & (computed)       & characters per line\\
+  \key{lines}         & (computed)       & lines per page\\
+  \key{ascent}        & \texttt{0.88zw}  & yoko: height of the character
+                                           face above the baseline\\
+  \hline
+\end{tabular}
+\end{center}
+
+\section{How the grid is computed}
+
+Let 1\,zw and $b$ be the full-width character size and
+\cs{baselineskip} of \cs{normalsize}.  In both yoko and tate,
+\cs{textwidth} is the length of a line and \cs{textheight} the extent
+over which the lines are stacked, so that
+\begin{align*}
+  \text{chars} &= \lfloor \cs{textwidth} / 1\,\text{zw} \rfloor,\\
+  \text{lines} &= \lfloor (\cs{textheight} - \cs{topskip}) / b \rfloor + 1,
+\end{align*}
+and the grid is $\text{chars}\times 1\,\text{zw}$ long along the lines
+and $(\text{lines}-1)\,b + 1\,\text{zw}$ wide across the lines.
+A remainder of less than 0.01\,pt is ignored (jlreq, for instance, adds
+0.0001\,pt to \cs{textwidth}).  Both values and the overflow are written
+to the log.
+
+\paragraph{Yoko}
+The grid begins at the top of the character face of the first line:
+\cs{topskip} minus the ascent (0.88\,zw by default) below the top of the
+text area.  The lines run from top to bottom.
+
+\paragraph{Tate}
+The baseline of the first line is \cs{topskip} left of the right edge of
+the text area, and the character face extends 0.5\,zw on each side of
+the baseline.  The lines run from right to left.
+
+\paragraph{Side margins}
+The text area of the current page is placed with \cs{oddsidemargin} or
+\cs{evensidemargin} as the LaTeX kernel does it.  The \cs{@outputpage}
+of pLaTeX has a branch that would swap the two margins in tate, but it
+tests \cs{iftdir} inside \verb|\vbox{\yoko ...}| and so never applies;
+the package follows what is actually typeset.
+
+\section{The overflow}
+
+\begin{description}
+\item[Along the lines] $\cs{textwidth} - \text{chars}\times
+  1\,\text{zw}$, drawn after the end of the lines (right in yoko, bottom
+  in tate).  It is distributed into the inter-character spaces of every
+  justified line: the characters drift away from their squares.
+\item[Across the lines] $\cs{textheight} - \cs{topskip} -
+  (\text{lines}-1)\,b$, drawn after the last line (bottom in yoko, left
+  in tate).  The page is not filled by whole lines; with
+  \cs{flushbottom} the remainder is distributed into vertical glue.
+\end{description}
+
+A text area with an overflow is what you get when only the four margins
+are given, as in word processors or with the \pkg{geometry} package.
+The default layout of the classic Japanese classes is another example:
+jbook (pLaTeX), ujbook (upLaTeX) and ltjbook (LuaTeX-ja) take their
+\cs{textwidth} from the standard book class,
+$\min(\cs{paperwidth}-2\,\text{in}, 327\,\text{pt})$, a value chosen for
+Computer Modern; at 10\,pt it is 33.98\,zw, i.e.\ 9.47\,pt longer than
+33 characters.  Their \cs{textheight}, $\lfloor(\cs{paperheight}-3.5\,
+\text{in})/b\rfloor\,b + \cs{topskip}$, is then truncated to whole
+points by \cs{@settopoint}; since \cs{topskip} is not a whole number of
+points, the truncation makes the last line no longer fit, and one line is
+lost (39 lines instead of 40 on A4, with an overflow of about 14\,pt).
+Only the \texttt{compatibility}-mode sizes of these classes use multiples
+of \cs{Cwd}.  jsbook and ltjsbook set \cs{textwidth} to a multiple of
+1\,zw, and jlreq sets the text solid by itself.
+
+\begin{figure}[htbp]
+\example{test-overflow-ujbook-uplatex.pdf}{ujbook, default layout (A4):
+  33 chars $\times$ 39 lines with an overflow in both directions}\hfill
+\example{test-jlreq-tate-uplatex.pdf}{jlreq, \texttt{tate}: 63 chars
+  $\times$ 26 lines, set solid}
+\end{figure}
+
+\section{Limitations}
+
+\begin{itemize}
+\item Two-column layout is not supported: the grid spans \cs{textwidth}.
+\item Trim marks that shift the page (\texttt{tombo} of jclasses,
+  jlreq-trimmarks) are not taken into account.
+\item The grid is computed once, at \verb|\begin{document}|; changes of
+  \cs{textwidth} or \cs{textheight} later in the document are ignored.
+\end{itemize}
+
+\section{Tests}
+
+\verb|make test| compiles every test file with pLaTeX, upLaTeX
+(+ dvipdfmx) and LuaLaTeX and checks the log.  \texttt{SHG-EXPECT OK}
+means that the writing direction, the number of characters and lines,
+and the overflow are as expected; \texttt{SHG-POS OK} means that the
+first character of the page, measured with \cs{pdfsavepos} (pTeX) or
+\cs{savepos} (LuaTeX), sits in the top left square of the grid as drawn,
+on odd and even pages.  With LuaTeX-ja in tate this check is skipped
+(\texttt{SHG-POS SKIP}): LuaTeX-ja typesets tate text in a rotated box
+whose \cs{savepos} coordinates are not those of the page.
+
+\section{History}
+
+\begin{description}
+\item[v1.0 (2026/10/25)] First public release.  Generalized from the
+  version written for the book on LaTeX page layout: it no longer needs
+  \cs{hanmenwidth}/\cs{hanmenheight}, supports tate and pLaTeX, and
+  draws the overflow.
+\end{description}
+
+\section{License}
+
+This package is licensed under the conditions of the LaTeX Project
+Public License, either version 1.3c of this license or (at your option)
+any later version.
+
+\end{document}

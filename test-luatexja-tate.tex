@@ -1,0 +1,41 @@
+%% test-luatexja-tate.tex
+%% ======================
+%% Typesetting test for LuaLaTeX + LuaTeX-ja, tate: the design of
+%% test-ptex-tate.tex (15Q, 27.5H line feed, 38 chars x 14 lines) on
+%% ltjtbook.
+%%
+%%   lualatex test-luatexja-tate.tex
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: tate, 38 chars x 14 lines, no overflow.
+%%   * SHG-POS SKIP (see test-common.tex): check the PDF instead; the
+%%     lines run from right to left and every character sits in a
+%%     square, as with test-ptex-tate.tex.
+\documentclass[a5paper]{ltjtbook}
+\setlength\paperwidth{128mm}
+\setlength\paperheight{188mm}
+\setlength\pagewidth{\paperwidth}
+\setlength\pageheight{\paperheight}
+\makeatletter
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize{\dimexpr15\jQ*1000000/962216\relax}{27.5\jH}}
+\normalsize
+\setlength\textwidth{\dimexpr15\jQ*38\relax}
+\setlength\textheight{\dimexpr27.5\jH*13+15\jQ\relax}
+\setlength\topskip{15\jQ}
+\setlength\maxdepth{.5\zw}
+\setlength\headheight{1\zw}
+\setlength\headsep{1\zw}
+\setlength\topmargin{\dimexpr15mm-1in-\headheight-\headsep\relax}
+\setlength\oddsidemargin{\dimexpr14mm-1in+\topskip-.5\zw\relax}
+\setlength\evensidemargin{\dimexpr\paperwidth-1in-\textheight-14mm+\topskip-.5\zw\relax}
+\setlength\parindent{1\zw}
+\makeatother
+\usepackage{showhanmengrid}
+\input{test-common}
+\SHGexpect{tate}{38}{14}{zero}{zero}
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\newpage
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\end{document}

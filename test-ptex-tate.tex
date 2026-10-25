@@ -1,0 +1,48 @@
+%% test-ptex-tate.tex
+%% ==================
+%% Typesetting test for (u)pLaTeX + dvipdfmx, tate: a book design of
+%% 15Q, 27.5H line feed, 38 chars x 14 lines (set solid), on a shiroku
+%% (128mm x 188mm) page with a 15mm top margin and a 14mm fore-edge.
+%%
+%%   uplatex test-ptex-tate.tex && dvipdfmx test-ptex-tate
+%%   platex  test-ptex-tate.tex && dvipdfmx test-ptex-tate
+%% The class is selected automatically (platex: tbook / uplatex: utbook).
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: tate, 38 chars x 14 lines, no overflow.
+%%   * SHG-POS OK on pages 1 (odd) and 2 (even).
+%%   * In the PDF, the lines run from right to left and every character
+%%     sits in a square.
+\ifnum\jis"2121="3000
+  \documentclass[a5paper]{utbook}
+\else
+  \documentclass[a5paper]{tbook}
+\fi
+\setlength\paperwidth{128mm}
+\setlength\paperheight{188mm}
+\AtBeginDvi{\special{papersize=\the\paperwidth,\the\paperheight}}
+\makeatletter
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize{\dimexpr15Q*1000000/962216\relax}{27.5H}}
+\normalsize
+%% in tate, \textwidth is the length of a line (38 chars) and
+%% \textheight the extent of the 14 lines
+\setlength\textwidth{\dimexpr15Q*38\relax}
+\setlength\textheight{\dimexpr27.5H*13+15Q\relax}
+\setlength\topskip{15Q}
+\setlength\maxdepth{.5zw}
+\setlength\headheight{1zw}
+\setlength\headsep{1zw}
+\setlength\topmargin{\dimexpr15mm-1in-\headheight-\headsep\relax}
+\setlength\oddsidemargin{\dimexpr14mm-1in+\topskip-.5zw\relax}
+\setlength\evensidemargin{\dimexpr\paperwidth-1in-\textheight-14mm+\topskip-.5zw\relax}
+\setlength\parindent{1zw}
+\makeatother
+\usepackage{showhanmengrid}
+\input{test-common}
+\SHGexpect{tate}{38}{14}{zero}{zero}
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\newpage
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\end{document}

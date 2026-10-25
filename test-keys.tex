@@ -1,0 +1,31 @@
+%% test-keys.tex
+%% =============
+%% Key test (upLaTeX + dvipdfmx, LuaLaTeX + LuaTeX-ja): the keys given
+%% as package options and with \showhanmengridsetup take effect.
+%%
+%%   uplatex test-keys.tex && dvipdfmx test-keys
+%%   lualatex test-keys.tex
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: chars=30 and lines=20 override the computed
+%%     values, so that there is an overflow in both directions.
+%%   * SHG-POS OK on page 1.
+%%   * In the PDF: no frame of the whole grid, no magenta overflow, red
+%%     0.4pt lines, 30 x 20 squares.
+\ifdefined\directlua
+  \documentclass{ltjbook}
+\else
+  \documentclass{ujbook}
+\fi
+\usepackage[chars=30, lines=20, frame=false, color=blue]{showhanmengrid}
+\showhanmengridsetup{color=red, rulewidth=0.4pt, overflow=false}
+\input{test-common}
+\SHGexpect{yoko}{30}{20}{positive}{positive}
+\makeatletter
+\AddToHook{begindocument/end}{%
+  \typeout{SHG-KEYS \shg@color/\shg@rulewidth/\ifshg@frame true\else false\fi
+    /\ifshg@overflow true\else false\fi}}
+\makeatother
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\end{document}

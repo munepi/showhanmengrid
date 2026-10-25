@@ -1,0 +1,84 @@
+%% test-common.tex
+%% ===============
+%% Helpers shared by the test files; \input this file after
+%% \usepackage{showhanmengrid}.
+%%
+%% \SHGexpect{<dir>}{<chars>}{<lines>}{<along>}{<across>}
+%%   Check the grid computed at \begin{document}: <dir> is yoko or tate;
+%%   <along> and <across> are the overflow along/across the lines, each
+%%   "zero" or "positive" (or "any").  Logs "SHG-EXPECT OK" or
+%%   "SHG-EXPECT NG".
+%% \SHGmark
+%%   Put this at the very beginning of the first line of a page.  When
+%%   the page is shipped out, the position of the first character is
+%%   compared with the top left square of the grid as drawn; logs
+%%   "SHG-POS OK" or "SHG-POS NG".  LuaTeX-ja typesets tate text in a
+%%   rotated box whose \savepos coordinates are not those of the page,
+%%   so the check is skipped there ("SHG-POS SKIP"); the drawing code is
+%%   the same as for pTeX, and test-ptex-tate.tex covers it.
+\makeatletter
+\ifdefined\savepos
+  \let\SHG@savepos\savepos \let\SHG@lastxpos\lastxpos \let\SHG@lastypos\lastypos
+  \def\SHG@pageht{\pageheight}
+\else
+  \let\SHG@savepos\pdfsavepos \let\SHG@lastxpos\pdflastxpos \let\SHG@lastypos\pdflastypos
+  \def\SHG@pageht{\pdfpageheight}
+\fi
+\def\SHG@ok#1{\typeout{SHG-#1 OK}}
+\def\SHG@ng#1#2{\typeout{SHG-#1 NG: #2}}
+
+\newcommand\SHGexpect[5]{%
+  \AddToHook{begindocument/end}{\SHG@expect{#1}{#2}{#3}{#4}{#5}}}
+\ExplSyntaxOn
+\cs_new_eq:NN \SHG@ifstreq \str_if_eq:nnTF
+\ExplSyntaxOff
+\def\SHG@sign#1#2{%
+  \SHG@ifstreq{#1}{any}{any}%
+    {\ifdim#2>\z@ positive\else\ifdim#2=\z@ zero\else negative\fi\fi}}
+\def\SHG@expect#1#2#3#4#5{%
+  \edef\SHG@got{\ifshg@tate tate\else yoko\fi/\the\shg@chars/\the\shg@lines/%
+    \SHG@sign{#4}\shg@overwd/\SHG@sign{#5}\shg@overht}%
+  \edef\SHG@want{#1/#2/#3/#4/#5}%
+  \typeout{SHG-RESULT \SHG@got\space(overflow \the\shg@overwd, \the\shg@overht)}%
+  \ifx\SHG@got\SHG@want\SHG@ok{EXPECT}\else\SHG@ng{EXPECT}{want \SHG@want}\fi}
+
+\newif\ifSHG@marked
+\newcommand\SHGmark{\SHG@savepos\global\SHG@markedtrue}
+\def\SHG@near#1#2#3#4{% |#1-#2| < 0.01pt ? #3 : #4
+  \ifdim\dimexpr#1-#2\relax<0.01pt
+    \ifdim\dimexpr#2-#1\relax<0.01pt #3\else#4\fi
+  \else#4\fi}
+\AddToHook{shipout/after}{%
+  \ifSHG@marked
+    \global\SHG@markedfalse
+    \ifnum0\ifshg@tate\ifx\shg@engine\SHG@luatexja1\fi\fi=1
+      \typeout{SHG-POS SKIP (page \thepage)}%
+    \else
+      \begingroup
+        \dimen0=\SHG@lastxpos sp
+        \dimen2=\dimexpr\SHG@pageht-\SHG@lastypos sp\relax
+        %% the first character: yoko, its baseline on the left edge;
+        %% tate, its baseline at the top edge
+        \ifshg@tate
+          \dimen4=\dimexpr\shg@gridleft+\shg@gridwd-.5\shg@zw\relax
+          \dimen6=\shg@gridtop
+        \else
+          \dimen4=\shg@gridleft
+          \dimen6=\dimexpr\shg@gridtop+\shg@ascent\relax
+        \fi
+        \SHG@near{\dimen0}{\dimen4}{\SHG@near{\dimen2}{\dimen6}%
+          {\SHG@ok{POS}}{\SHG@ng{POS}{page \thepage: y=\the\dimen2, want \the\dimen6}}}%
+          {\SHG@ng{POS}{page \thepage: x=\the\dimen0, want \the\dimen4}}%
+      \endgroup
+    \fi
+  \fi}
+\def\SHG@luatexja{luatexja}
+
+%% Body text
+\newcommand\SHGtext{%
+  本は、文字を並べた紙を束ねたものです。
+  文字をどこに、どの大きさで、どれだけの間隔で並べるかによって、同じ文章でも読みやすさはまったく変わります。
+  版面は、文字の大きさと、1行に並べる文字の数と、1ページに並べる行の数と、行と行の間隔から組み立てます。
+  この4つが決まれば、版面の幅と高さは計算で決まります。\par}
+\makeatother
+\endinput

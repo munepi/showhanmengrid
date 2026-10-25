@@ -1,0 +1,30 @@
+%% test-jlreq.tex
+%% ==============
+%% Typesetting test for jlreq, which sets the text solid by itself.
+%%
+%%   uplatex test-jlreq.tex && dvipdfmx test-jlreq   (or platex)
+%%   lualatex test-jlreq.tex
+%% For tate:
+%%   uplatex -jobname=test-jlreq-tate "\def\TATE{1}\input test-jlreq.tex"
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: yoko 44 chars x 37 lines, or tate 63 chars x 26
+%%     lines, with no overflow.
+%%   * SHG-POS OK (SKIP for tate on LuaLaTeX) on pages 1 and 2.
+\ifdefined\TATE
+  \documentclass[tate,twoside,gutter=20mm]{jlreq}
+\else
+  \documentclass[twoside,gutter=20mm]{jlreq}
+\fi
+\usepackage{showhanmengrid}
+\input{test-common}
+\ifdefined\TATE
+  \SHGexpect{tate}{63}{26}{zero}{zero}
+\else
+  \SHGexpect{yoko}{44}{37}{zero}{zero}
+\fi
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\newpage
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\end{document}

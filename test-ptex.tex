@@ -1,0 +1,45 @@
+%% test-ptex.tex
+%% =============
+%% Typesetting test for (u)pLaTeX + dvipdfmx, yoko: a book design of
+%% 13Q, 23H line feed, 42 chars x 33 lines (set solid), on a B5 variant
+%% (182mm x 230mm) page with 25mm top and gutter margins.
+%%
+%%   uplatex test-ptex.tex && dvipdfmx test-ptex
+%%   platex  test-ptex.tex && dvipdfmx test-ptex
+%% The class is selected automatically (platex: jbook / uplatex: ujbook).
+%% Since current pLaTeX also runs on the e-upTeX engine, the format is
+%% detected via the internal kanji encoding.
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: 42 chars x 33 lines, no overflow.
+%%   * SHG-POS OK on pages 1 (odd) and 2 (even): the first character
+%%     sits in the top left square of the grid.
+%%   * In the PDF, every character of the body text sits in a square.
+\ifnum\jis"2121="3000
+  \documentclass[b5paper]{ujbook}
+\else
+  \documentclass[b5paper]{jbook}
+\fi
+\setlength\paperwidth{182mm}
+\setlength\paperheight{230mm}
+\AtBeginDvi{\special{papersize=\the\paperwidth,\the\paperheight}}
+\makeatletter
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize{\dimexpr13Q*1000000/962216\relax}{23H}}
+\normalsize
+\setlength\textwidth{\dimexpr13Q*42\relax}
+\setlength\textheight{\dimexpr23H*32+13Q\relax}
+\setlength\topskip{13Q}
+\setlength\topmargin{\dimexpr25mm-1in-\headheight-\headsep-\topskip+13Q*88/100\relax}
+\setlength\oddsidemargin{\dimexpr25mm-1in\relax}
+\setlength\evensidemargin{\dimexpr\paperwidth-2in-\oddsidemargin-\textwidth\relax}
+\setlength\parindent{1zw}
+\makeatother
+\usepackage{showhanmengrid}
+\input{test-common}
+\SHGexpect{yoko}{42}{33}{zero}{zero}
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\newpage
+\noindent\SHGmark\SHGtext\SHGtext\SHGtext
+\end{document}

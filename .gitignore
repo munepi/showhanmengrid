@@ -1,0 +1,10 @@
+*.aux
+*.log
+*.out
+*.toc
+*.dvi
+*.synctex.gz
+test-*.pdf
+showhanmengrid.zip
+*~
+.DS_Store
