@@ -1,0 +1,73 @@
+%% test-kanjiskip.tex
+%% ==================
+%% Character pitch test with \kanjiskip: the design of test-ptex.tex
+%% (13Q, 23H line feed, 33 lines), but with \kanjiskip = 0.25zw (shibu-aki)
+%% and \textwidth = 33 characters at a pitch of 1.25zw (41zw).
+%%
+%%   uplatex test-kanjiskip.tex && dvipdfmx test-kanjiskip   (or platex)
+%%   lualatex test-kanjiskip.tex
+%% With the squares at the natural pitch:
+%%   uplatex -jobname=test-kanjiskip-natural "\def\PITCH{natural}\input test-kanjiskip.tex"
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: 41 chars (pitch=zw) or 33 chars (pitch=natural) x
+%%     33 lines, no overflow.
+%%   * The note "character pitch = 1.25zw, not 1zw (\kanjiskip = 0.25zw)"
+%%     in the log and above the head of every page.
+%%   * SHG-POS OK for the first character of page 1, and, with
+%%     pitch=natural, for the end of the 33rd character of page 2 (with
+%%     pitch=zw the characters drift off their squares on purpose).
+\ifdefined\directlua
+  \documentclass[b5paper]{ltjbook}
+  \def\Q{\jQ}\def\H{\jH}\def\ZW{\zw}
+\else\ifnum\jis"2121="3000
+  \documentclass[b5paper]{ujbook}
+  \def\Q{Q}\def\H{H}\def\ZW{zw}
+\else
+  \documentclass[b5paper]{jbook}
+  \def\Q{Q}\def\H{H}\def\ZW{zw}
+\fi\fi
+\ifdefined\directlua
+  \setlength\paperwidth{182mm}\setlength\paperheight{230mm}
+  \setlength\pagewidth{\paperwidth}\setlength\pageheight{\paperheight}
+\else
+  \setlength\paperwidth{182mm}\setlength\paperheight{230mm}
+  \AtBeginDvi{\special{papersize=\the\paperwidth,\the\paperheight}}
+\fi
+\makeatletter
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize{\dimexpr13\Q*1000000/962216\relax}{23\H}}
+\normalsize
+\setlength\textwidth{\dimexpr13\Q*41\relax}
+\setlength\textheight{\dimexpr23\H*32+13\Q\relax}
+\setlength\topskip{13\Q}
+\setlength\topmargin{\dimexpr25mm-1in-\headheight-\headsep-\topskip+13\Q*88/100\relax}
+\setlength\oddsidemargin{\dimexpr25mm-1in\relax}
+\setlength\evensidemargin{\dimexpr\paperwidth-2in-\oddsidemargin-\textwidth\relax}
+\setlength\parindent{0pt}
+\makeatother
+\ifdefined\directlua
+  \ltjsetparameter{kanjiskip=.25\zw plus 1pt minus 1pt}
+\else
+  \kanjiskip=.25zw plus 1pt minus 1pt
+\fi
+\ifdefined\PITCH\else\def\PITCH{zw}\fi
+\edef\next{\noexpand\usepackage[pitch=\PITCH]{showhanmengrid}}\next
+\input{test-common}
+\def\NATURAL{natural}
+\SHGexpectnote{character pitch = 1.25zw, not 1zw (\string\kanjiskip\space= 0.25zw)}
+\ifx\PITCH\NATURAL
+  \SHGexpect{yoko}{33}{33}{zero}{zero}
+\else
+  \SHGexpect{yoko}{41}{33}{zero}{zero}
+\fi
+\begin{document}
+\noindent\SHGmark\SHGkanji{200}\par
+\newpage
+\ifx\PITCH\NATURAL
+  \noindent\SHGkanji{33}\SHGmarkend{33}\par
+\else
+  \noindent\SHGmark\SHGkanji{200}\par
+\fi
+\SHGkanji{200}\par
+\end{document}

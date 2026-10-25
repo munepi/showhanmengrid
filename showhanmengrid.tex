@@ -12,10 +12,11 @@
 \usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage[colorlinks, allcolors=blue!50!black]{hyperref}
-\newcommand*\shgversion{v1.0 (2026/10/25)}
+\newcommand*\shgversion{v1.1 (2026/10/25)}
 \newcommand*\cs[1]{\texttt{\char`\\#1}}
 \newcommand*\pkg[1]{\textsf{#1}}
 \newcommand*\key[1]{\texttt{#1}}
+\newcommand*\meta[1]{\textlangle\textit{#1}\textrangle}
 \newcommand\example[2]{%
   \begin{minipage}[t]{.48\linewidth}
     \centering
@@ -54,7 +55,9 @@ The \pkg{showhanmengrid} package draws, in the background of every page,
 \item \textcolor{cyan}{in cyan}, one square of 1\,zw $\times$ 1\,zw for
   each character position, and the frame of the whole grid;
 \item \textcolor{magenta}{in magenta}, the \emph{overflow}: the part of
-  the text area that does not fit the grid.
+  the text area that does not fit the grid;
+\item \textcolor{magenta}{in magenta}, when the character pitch is not
+  1\,zw, a note in the top margin (section~\ref{sec:pitch}).
 \end{enumerate}
 Both horizontal (yoko, 横組み) and vertical (tate, 縦組み) writing are
 supported.
@@ -63,7 +66,8 @@ supported.
 pLaTeX and upLaTeX (with dvipdfmx), and LuaLaTeX with LuaTeX-ja.
 LaTeX2e 2025-06-01 or later is required.  With any other engine
 (pdfLaTeX, XeLaTeX, or LuaLaTeX without LuaTeX-ja) the package issues a
-warning and does nothing.
+warning and does nothing.  Trim marks that move the page are taken into
+account (section~\ref{sec:tombo}).
 
 \section{Usage}
 
@@ -94,6 +98,11 @@ LuaTeX-ja).  Keys can be given as package options or with
   \key{lines}         & (computed)       & lines per page\\
   \key{ascent}        & \texttt{0.88zw}  & yoko: height of the character
                                            face above the baseline\\
+  \key{pitch}         & \texttt{zw}      & pitch of the squares along the
+                                           line: \texttt{zw},
+                                           \texttt{natural} or a length\\
+  \key{note}          & \texttt{true}    & draw the note on a character
+                                           pitch other than 1\,zw\\
   \hline
 \end{tabular}
 \end{center}
@@ -101,14 +110,16 @@ LuaTeX-ja).  Keys can be given as package options or with
 \section{How the grid is computed}
 
 Let 1\,zw and $b$ be the full-width character size and
-\cs{baselineskip} of \cs{normalsize}.  In both yoko and tate,
-\cs{textwidth} is the length of a line and \cs{textheight} the extent
-over which the lines are stacked, so that
+\cs{baselineskip} of \cs{normalsize}, and $p$ the pitch of the squares
+along the line (1\,zw by default; see section~\ref{sec:pitch}).  In
+both yoko and tate, \cs{textwidth} is the length of a line and
+\cs{textheight} the extent over which the lines are stacked, so that
 \begin{align*}
-  \text{chars} &= \lfloor \cs{textwidth} / 1\,\text{zw} \rfloor,\\
+  \text{chars} &= \lfloor (\cs{textwidth} - 1\,\text{zw}) / p \rfloor + 1,\\
   \text{lines} &= \lfloor (\cs{textheight} - \cs{topskip}) / b \rfloor + 1,
 \end{align*}
-and the grid is $\text{chars}\times 1\,\text{zw}$ long along the lines
+and the grid is $(\text{chars}-1)\,p + 1\,\text{zw}$ long along the
+lines (that is, $\text{chars}\times 1\,\text{zw}$ for $p=1\,\text{zw}$)
 and $(\text{lines}-1)\,b + 1\,\text{zw}$ wide across the lines.
 A remainder of less than 0.01\,pt is ignored (jlreq, for instance, adds
 0.0001\,pt to \cs{textwidth}).  Both values and the overflow are written
@@ -134,7 +145,7 @@ the package follows what is actually typeset.
 \section{The overflow}
 
 \begin{description}
-\item[Along the lines] $\cs{textwidth} - \text{chars}\times
+\item[Along the lines] $\cs{textwidth} - (\text{chars}-1)\,p -
   1\,\text{zw}$, drawn after the end of the lines (right in yoko, bottom
   in tate).  It is distributed into the inter-character spaces of every
   justified line: the characters drift away from their squares.
@@ -167,12 +178,76 @@ of \cs{Cwd}.  jsbook and ltjsbook set \cs{textwidth} to a multiple of
   $\times$ 26 lines, set solid}
 \end{figure}
 
+\section{Character pitch other than \texorpdfstring{1\,zw}{1zw}}\label{sec:pitch}
+
+Japanese text is not always set with the characters side by side.
+\emph{Shibu-aki} (四分アキ, 0.25\,zw between characters) is common in
+tate, and some designs spread 34 characters over the width of 35.  The
+space can be given by \cs{kanjiskip}, which is simple, or, more
+properly, by the glue between ideographs in the JFM (TFM).
+
+The package measures the natural character pitch of \cs{normalsize} as
+\[
+  p_{\text{natural}} = \bigl(\text{width of 「漢漢漢」} -
+  \text{width of 「漢」}\bigr) / 2,
+\]
+which includes both.  When it differs from 1\,zw, a one-line note is
+drawn in the top margin of every page, just above the head, and written
+to the log:
+\begin{verbatim}
+showhanmengrid: character pitch = 1.25zw, not 1zw
+  (\kanjiskip = 0zw, JFM +0.25zw); squares at pitch=zw
+\end{verbatim}
+The parenthesis splits the extra space into the natural width of
+\cs{kanjiskip} and the part given by the JFM.  (With LuaTeX-ja,
+\cs{kanjiskip} of \cs{maxdimen} means that the value of the JFM is
+used; the note then says ``\verb|\kanjiskip = JFM|''.)  The key
+\key{note=false} turns the note off.
+
+The key \key{pitch} sets the pitch $p$ of the squares along the line:
+\begin{description}
+\item[\texttt{pitch=zw}] (default) the squares of the hanmen design,
+  1\,zw each and side by side.  The characters drift away from them.
+\item[\texttt{pitch=natural}] the squares (still 1\,zw) are placed at
+  $p_{\text{natural}}$, so that every character sits in its square; the
+  number of characters per line and the overflow follow from $p$.
+\item[\texttt{pitch=}\meta{length}] the pitch is given directly, e.g.\
+  \texttt{pitch=1.25zw}.
+\end{description}
+The line feed is not affected.
+
+\begin{figure}[htbp]
+\example{test-jfm-natural-lualatex.pdf}{shibu-aki by the JFM,
+  \texttt{pitch=natural}: 33 chars $\times$ 33 lines}\hfill
+\example{test-jfm-lualatex.pdf}{the same text, \texttt{pitch=zw}: the
+  grid of the design, 41 chars}
+\end{figure}
+
+\section{Trim marks and \texorpdfstring{\cs{mag}}{\textbackslash mag}}\label{sec:tombo}
+
+The grid is drawn in the \texttt{shipout/background} picture, whose
+origin moves with \cs{hoffset} and \cs{voffset} as the text does.  In
+addition,
+\begin{itemize}
+\item with pLaTeX, the \texttt{tombo} option of jclasses and jsclasses,
+  and the classes and packages that rely on it (\cs{iftombow} is true;
+  e.g.\ gentombow and jlreq-trimmarks on pLaTeX), move the page body by
+  1\,in in both directions in \cs{@outputpage}; the grid is moved
+  likewise;
+\item with LuaLaTeX, gentombow and jlreq-trimmarks move the page with
+  \cs{hoffset} and \cs{voffset}, which needs no correction.
+\end{itemize}
+A \cs{mag} other than 1000 is not supported: the package writes a
+warning to the log and draws nothing.
+
 \section{Limitations}
 
 \begin{itemize}
 \item Two-column layout is not supported: the grid spans \cs{textwidth}.
-\item Trim marks that shift the page (\texttt{tombo} of jclasses,
-  jlreq-trimmarks) are not taken into account.
+\item \cs{mag} other than 1000 is not supported (see above).
+\item The character pitch is measured once, with 「漢」 of
+  \cs{normalsize}; a JFM that gives different classes of characters
+  different spaces is represented by the ideographs.
 \item The grid is computed once, at \verb|\begin{document}|; changes of
   \cs{textwidth} or \cs{textheight} later in the document are ignored.
 \end{itemize}
@@ -185,13 +260,22 @@ means that the writing direction, the number of characters and lines,
 and the overflow are as expected; \texttt{SHG-POS OK} means that the
 first character of the page, measured with \cs{pdfsavepos} (pTeX) or
 \cs{savepos} (LuaTeX), sits in the top left square of the grid as drawn,
-on odd and even pages.  With LuaTeX-ja in tate this check is skipped
+on odd and even pages; some tests also check the end of the last square
+of a line.  \texttt{SHG-NOTE OK} means that the note on the character
+pitch is as expected (or absent).  With LuaTeX-ja in tate the position
+check is skipped
 (\texttt{SHG-POS SKIP}): LuaTeX-ja typesets tate text in a rotated box
 whose \cs{savepos} coordinates are not those of the page.
 
 \section{History}
 
 \begin{description}
+\item[v1.1 (2026/10/25)] Character pitch other than 1\,zw: the note in
+  the top margin and the keys \key{pitch} and \key{note}.  Trim marks
+  (\cs{iftombow} of pLaTeX, gentombow, jlreq-trimmarks) are taken into
+  account.  \cs{mag} other than 1000 disables the package with a
+  warning.  Fixed: with a non-zero \cs{hoffset} or \cs{voffset}, the
+  grid was shifted by that amount twice.
 \item[v1.0 (2026/10/25)] First public release.  Generalized from the
   version written for the book on LaTeX page layout: it no longer needs
   \cs{hanmenwidth}/\cs{hanmenheight}, supports tate and pLaTeX, and
@@ -200,8 +284,9 @@ whose \cs{savepos} coordinates are not those of the page.
 
 \section{License}
 
-This package is licensed under the conditions of the LaTeX Project
-Public License, either version 1.3c of this license or (at your option)
-any later version.
+This package is licensed under the conditions of the \LaTeX{} Project
+Public License, either version 1.3c of this license or any later version.
+
+Copyright \copyright{} 2026 Munehiro Yamamoto
 
 \end{document}

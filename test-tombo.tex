@@ -1,0 +1,32 @@
+%% test-tombo.tex
+%% ==============
+%% Trim marks (tombo) that move the page: the grid must follow the text.
+%% \CLS is the class, \OPT its options and \PKG a package that adds the
+%% trim marks (all optional; the default is jbook[tombo]).
+%%
+%%   platex  "\def\OPT{tombo}\def\CLS{jbook}\input test-tombo"
+%%   platex  "\def\OPT{tombo}\def\CLS{jsbook}\input test-tombo"
+%%   uplatex "\def\OPT{tombo}\def\CLS{utbook}\input test-tombo"
+%%   uplatex "\def\CLS{ujarticle}\def\PKG{gentombow}\input test-tombo"
+%%   lualatex "\def\CLS{ltjsarticle}\def\PKG{gentombow}\input test-tombo"
+%%   platex  "\def\CLS{jlreq}\def\PKG{jlreq-trimmarks}\input test-tombo"
+%%   lualatex "\def\CLS{jlreq}\def\PKG{jlreq-trimmarks}\input test-tombo"
+%%
+%% The tombo option of jclasses and jsclasses (\iftombow of pLaTeX) moves
+%% the page by 1in in both directions in \@outputpage, while gentombow
+%% (with LuaLaTeX) and jlreq-trimmarks move it with \hoffset/\voffset.
+%%
+%% What to check:
+%%   * SHG-POS OK on pages 1 (odd) and 2 (even).
+\ifdefined\CLS\else\def\CLS{jbook}\fi
+\ifdefined\OPT\else\def\OPT{tombo}\fi
+\edef\next{\noexpand\documentclass[\OPT]{\CLS}}\next
+\ifdefined\PKG\usepackage{\PKG}\fi
+\usepackage{showhanmengrid}
+\input{test-common}
+\SHGexpect{any}{any}{any}{any}{any}
+\begin{document}
+\noindent\SHGmark\SHGtext\SHGtext
+\newpage
+\noindent\SHGmark\SHGtext
+\end{document}

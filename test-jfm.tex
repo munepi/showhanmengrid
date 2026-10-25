@@ -1,0 +1,52 @@
+%% test-jfm.tex
+%% ============
+%% Character pitch test with a JFM (LuaLaTeX + LuaTeX-ja): the design of
+%% test-kanjiskip.tex, but the 0.25zw between characters comes from the
+%% JFM (jfm-shgtest.lua) and \kanjiskip is 0pt.
+%%
+%%   lualatex test-jfm.tex
+%%   lualatex -jobname=test-jfm-natural "\def\PITCH{natural}\input test-jfm.tex"
+%%
+%% What to check:
+%%   * SHG-EXPECT OK: 41 chars (pitch=zw) or 33 chars (pitch=natural) x
+%%     33 lines, no overflow.
+%%   * SHG-NOTE OK: "character pitch = 1.25zw, not 1zw (\kanjiskip =
+%%     0zw, JFM +0.25zw)".
+%%   * SHG-POS OK, as in test-kanjiskip.tex.
+\documentclass[b5paper]{ltjbook}
+\setlength\paperwidth{182mm}\setlength\paperheight{230mm}
+\setlength\pagewidth{\paperwidth}\setlength\pageheight{\paperheight}
+\makeatletter
+\DeclareFontShape{JY3}{mc}{m}{n}{<-> s*[0.962216] \ltj@stdmcfont:jfm=shgtest}{}
+\renewcommand{\normalsize}{%
+  \@setfontsize\normalsize{\dimexpr13\jQ*1000000/962216\relax}{23\jH}}
+\normalsize
+\setlength\textwidth{\dimexpr13\jQ*41\relax}
+\setlength\textheight{\dimexpr23\jH*32+13\jQ\relax}
+\setlength\topskip{13\jQ}
+\setlength\topmargin{\dimexpr25mm-1in-\headheight-\headsep-\topskip+13\jQ*88/100\relax}
+\setlength\oddsidemargin{\dimexpr25mm-1in\relax}
+\setlength\evensidemargin{\dimexpr\paperwidth-2in-\oddsidemargin-\textwidth\relax}
+\setlength\parindent{0pt}
+\makeatother
+\ltjsetparameter{kanjiskip=0pt}
+\ifdefined\PITCH\else\def\PITCH{zw}\fi
+\edef\next{\noexpand\usepackage[pitch=\PITCH]{showhanmengrid}}\next
+\input{test-common}
+\def\NATURAL{natural}
+\SHGexpectnote{character pitch = 1.25zw, not 1zw (\string\kanjiskip\space= 0zw, JFM +0.25zw)}
+\ifx\PITCH\NATURAL
+  \SHGexpect{yoko}{33}{33}{zero}{zero}
+\else
+  \SHGexpect{yoko}{41}{33}{zero}{zero}
+\fi
+\begin{document}
+\noindent\SHGmark\SHGkanji{200}\par
+\newpage
+\ifx\PITCH\NATURAL
+  \noindent\SHGkanji{33}\SHGmarkend{33}\par
+\else
+  \noindent\SHGmark\SHGkanji{200}\par
+\fi
+\SHGkanji{200}\par
+\end{document}

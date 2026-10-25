@@ -1,0 +1,27 @@
+%% test-mag.tex
+%% ============
+%% \mag other than 1000 is not supported: the package warns and draws
+%% nothing.
+%%
+%%   platex test-mag.tex && dvipdfmx test-mag
+%%   lualatex test-mag.tex
+%%
+%% What to check:
+%%   * the log has "Package showhanmengrid Warning: \mag=1200 is not
+%%     supported".
+%%   * SHG-MAG OK: the grid was not set up (nothing is drawn).
+\ifdefined\directlua
+  \documentclass{ltjarticle}
+\else
+  \documentclass{jarticle}
+\fi
+\mag=1200
+\usepackage{showhanmengrid}
+\makeatletter
+\AddToHook{begindocument/end}[test]{%
+  \ifdim\shg@zw=\z@\typeout{SHG-MAG OK}\else\typeout{SHG-MAG NG: the grid was set up}\fi}
+\DeclareHookRule{begindocument/end}{showhanmengrid}{before}{test}
+\makeatother
+\begin{document}
+本文です。
+\end{document}

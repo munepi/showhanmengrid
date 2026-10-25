@@ -7,11 +7,16 @@
 %%   Check the grid computed at \begin{document}: <dir> is yoko or tate;
 %%   <along> and <across> are the overflow along/across the lines, each
 %%   "zero" or "positive" (or "any").  Logs "SHG-EXPECT OK" or
-%%   "SHG-EXPECT NG".
+%%   "SHG-EXPECT NG".  Any argument can also be "any".
 %% \SHGmark
 %%   Put this at the very beginning of the first line of a page.  When
 %%   the page is shipped out, the position of the first character is
-%%   compared with the top left square of the grid as drawn; logs
+%%   compared with the top left square of the grid as drawn.
+%% \SHGmarkend{<n>}
+%%   Put this just after the <n>-th (last) character of a one-line
+%%   paragraph at the top of a page; the end of the character is
+%%   compared with the end of the <n>-th square.  (A mark between two
+%%   characters would suppress the \kanjiskip there.)  Both log
 %%   "SHG-POS OK" or "SHG-POS NG".  LuaTeX-ja typesets tate text in a
 %%   rotated box whose \savepos coordinates are not those of the page,
 %%   so the check is skipped there ("SHG-POS SKIP"); the drawing code is
@@ -35,15 +40,28 @@
 \def\SHG@sign#1#2{%
   \SHG@ifstreq{#1}{any}{any}%
     {\ifdim#2>\z@ positive\else\ifdim#2=\z@ zero\else negative\fi\fi}}
+\def\SHG@any#1#2{\SHG@ifstreq{#1}{any}{any}{#2}}
 \def\SHG@expect#1#2#3#4#5{%
-  \edef\SHG@got{\ifshg@tate tate\else yoko\fi/\the\shg@chars/\the\shg@lines/%
+  \edef\SHG@got{\SHG@any{#1}{\ifshg@tate tate\else yoko\fi}/%
+    \SHG@any{#2}{\the\shg@chars}/\SHG@any{#3}{\the\shg@lines}/%
     \SHG@sign{#4}\shg@overwd/\SHG@sign{#5}\shg@overht}%
   \edef\SHG@want{#1/#2/#3/#4/#5}%
   \typeout{SHG-RESULT \SHG@got\space(overflow \the\shg@overwd, \the\shg@overht)}%
   \ifx\SHG@got\SHG@want\SHG@ok{EXPECT}\else\SHG@ng{EXPECT}{want \SHG@want}\fi}
 
+%% \SHGexpectnote{<text>}: the note on the character pitch contains
+%% <text> ("none": there is no note).  Logs "SHG-NOTE OK" or "SHG-NOTE NG".
+\newcommand\SHGexpectnote[1]{%
+  \AddToHook{begindocument/end}{%
+    \typeout{SHG-NOTETEXT [\shg@notetext]}%
+    \SHG@ifstreq{#1}{none}%
+      {\ifx\shg@notetext\@empty\SHG@ok{NOTE}\else\SHG@ng{NOTE}{want none}\fi}%
+      {\@expandtwoargs\in@{#1}{\shg@notetext}%
+       \ifin@\SHG@ok{NOTE}\else\SHG@ng{NOTE}{want #1}\fi}}}
+
 \newif\ifSHG@marked
-\newcommand\SHGmark{\SHG@savepos\global\SHG@markedtrue}
+\newcommand\SHGmark{\SHG@savepos\global\SHG@markedtrue\gdef\SHG@markn{0}}
+\newcommand\SHGmarkend[1]{\SHG@savepos\global\SHG@markedtrue\gdef\SHG@markn{#1}}
 \def\SHG@near#1#2#3#4{% |#1-#2| < 0.01pt ? #3 : #4
   \ifdim\dimexpr#1-#2\relax<0.01pt
     \ifdim\dimexpr#2-#1\relax<0.01pt #3\else#4\fi
@@ -59,12 +77,21 @@
         \dimen2=\dimexpr\SHG@pageht-\SHG@lastypos sp\relax
         %% the first character: yoko, its baseline on the left edge;
         %% tate, its baseline at the top edge
-        \ifshg@tate
-          \dimen4=\dimexpr\shg@gridleft+\shg@gridwd-.5\shg@zw\relax
-          \dimen6=\shg@gridtop
+        %% (the grid is drawn relative to the origin of the picture of
+        %% shipout/background, which sits at (\hoffset, \voffset) of the
+        %% page)
+        %% \SHGmarkend{<n>}: the end of the <n>-th square
+        \ifnum\SHG@markn>\z@
+          \dimen8=\dimexpr\shg@pitch*(\SHG@markn-1)+\shg@zw\relax
         \else
-          \dimen4=\shg@gridleft
-          \dimen6=\dimexpr\shg@gridtop+\shg@ascent\relax
+          \dimen8=\z@
+        \fi
+        \ifshg@tate
+          \dimen4=\dimexpr\hoffset+\shg@gridleft+\shg@gridwd-.5\shg@zw\relax
+          \dimen6=\dimexpr\voffset+\shg@gridtop+\dimen8\relax
+        \else
+          \dimen4=\dimexpr\hoffset+\shg@gridleft+\dimen8\relax
+          \dimen6=\dimexpr\voffset+\shg@gridtop+\shg@ascent\relax
         \fi
         \SHG@near{\dimen0}{\dimen4}{\SHG@near{\dimen2}{\dimen6}%
           {\SHG@ok{POS}}{\SHG@ng{POS}{page \thepage: y=\the\dimen2, want \the\dimen6}}}%
@@ -80,5 +107,8 @@
   文字をどこに、どの大きさで、どれだけの間隔で並べるかによって、同じ文章でも読みやすさはまったく変わります。
   版面は、文字の大きさと、1行に並べる文字の数と、1ページに並べる行の数と、行と行の間隔から組み立てます。
   この4つが決まれば、版面の幅と高さは計算で決まります。\par}
+%% Ideographs only, without punctuation, so that every line is filled
+%% at the natural character pitch
+\newcommand\SHGkanji[1]{\count@=#1 \loop\ifnum\count@>\z@ 永\advance\count@\m@ne\repeat}
 \makeatother
 \endinput

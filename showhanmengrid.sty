@@ -26,8 +26,15 @@
 %%         of 1zw, or a \textheight that is not \topskip plus a
 %%         multiple of \baselineskip.  The overflow is distributed into
 %%         inter-character (or inter-line) spaces, i.e. the text is not
-%%         set solid ("beta-gumi").
+%%         set solid ("beta-gumi");
+%%     (3) when the character pitch is not 1zw (\kanjiskip or the JFM
+%%         puts space between ideographs, e.g. shibu-aki), a note in
+%%         the top margin, in magenta.  With pitch=natural, the squares
+%%         are placed at the actual character pitch.
 %%   Both horizontal (yoko) and vertical (tate) writing are supported.
+%%   Trim marks that move the page (the tombo option of jclasses and
+%%   jsclasses, gentombow, jlreq-trimmarks) are taken into account.
+%%   With \mag other than 1000, the package warns and draws nothing.
 %%
 %% Supported formats/engines
 %%   * pLaTeX, upLaTeX (+ dvipdfmx)
@@ -38,6 +45,7 @@
 %%   \usepackage{showhanmengrid}
 %%   \usepackage[color=blue!50, overflow=false]{showhanmengrid}
 %%   \showhanmengridsetup{rulewidth=0.2pt}   %% in the preamble
+%%   \usepackage[pitch=natural]{showhanmengrid}   %% e.g. shibu-aki
 %%
 %% Keys
 %%   color=<color>          grid color (default: cyan)
@@ -49,22 +57,30 @@
 %%   lines=<int>            lines per page (default: from \textheight)
 %%   ascent=<dimen>         height of the character face above the
 %%                          baseline in yoko (default: 0.88zw)
+%%   pitch=<zw|natural|dimen>
+%%                          pitch of the squares along the line:
+%%                          1zw (default), the natural character pitch
+%%                          of \normalsize, or the given length
+%%   note=<true|false>      draw the note on a character pitch other
+%%                          than 1zw (default: true)
 %%
 \NeedsTeXFormat{LaTeX2e}[2025-06-01]
 \ProvidesPackage{showhanmengrid}
-  [2026/10/25 v1.0 show the hanmen grid of Japanese text]
+  [2026/10/25 v1.1 show the hanmen grid of Japanese text]
 
 \RequirePackage{xcolor}
 
 %% Keys
 \newif\ifshg@frame    \shg@frametrue
 \newif\ifshg@overflow \shg@overflowtrue
+\newif\ifshg@note     \shg@notetrue
 \def\shg@color{cyan}
 \def\shg@overflowcolor{magenta}
 \def\shg@rulewidth{0.1pt}
 \def\shg@chars@opt{}
 \def\shg@lines@opt{}
 \def\shg@ascent@opt{}
+\def\shg@pitch@opt{zw}
 \DeclareKeys[showhanmengrid]{
   color.store         = \shg@color,
   overflowcolor.store = \shg@overflowcolor,
@@ -74,6 +90,8 @@
   chars.store         = \shg@chars@opt,
   lines.store         = \shg@lines@opt,
   ascent.store        = \shg@ascent@opt,
+  pitch.store         = \shg@pitch@opt,
+  note.if             = shg@note,
 }
 \ProcessKeyOptions[showhanmengrid]
 \newcommand\showhanmengridsetup[1]{\SetKeys[showhanmengrid]{#1}}
@@ -101,6 +119,10 @@
 \newdimen\shg@zw           % 1zw of \normalsize
 \newdimen\shg@bs           % line feed (\baselineskip of \normalsize)
 \newdimen\shg@ascent       % yoko: character face above the baseline
+\newdimen\shg@natpitch     % natural character pitch (1zw + inter-character space)
+\newdimen\shg@pitch        % pitch of the squares along the line
+\newdimen\shg@kanjiskip    % natural width of \kanjiskip
+\newdimen\shg@tombowshift  % shift of the page body by trim marks
 \newdimen\shg@gridwd       % horizontal size of the grid
 \newdimen\shg@gridht       % vertical size of the grid
 \newdimen\shg@overwd       % horizontal overflow
@@ -126,11 +148,30 @@
 %% Compute the grid at the end of \begin{document}, after the class has
 %% set the writing direction
 \AddToHook{begindocument/end}{%
+  \ifnum\mag=1000
+    \shg@setup
+  \else
+    \shg@warning{\string\mag=\the\mag\space is not supported;\MessageBreak
+      the hanmen grid will not be drawn}%
+  \fi}
+\def\shg@setup{%
   \begingroup
     \normalsize
     \global\shg@zw=1\shg@zwunit
     \global\shg@bs=\baselineskip
     \shg@iftate\global\shg@tatetrue\else\global\shg@tatefalse\fi
+    %% the natural character pitch, including \kanjiskip and the glue
+    %% between ideographs given by the JFM
+    \setbox\z@\hbox{漢}\setbox\tw@\hbox{漢漢漢}%
+    \global\shg@natpitch=\dimexpr(\wd\tw@-\wd\z@)/2\relax
+    %% the natural width of \kanjiskip; LuaTeX-ja takes the value of the
+    %% JFM when it is \maxdimen
+    \ifx\shg@engine\shg@ptex
+      \@tempskipa=\kanjiskip
+    \else
+      \@tempskipa=\ltjgetparameter{kanjiskip}\relax
+    \fi
+    \global\shg@kanjiskip=\@tempskipa
   \endgroup
   \shg@textwd=\textwidth
   \shg@textht=\textheight
@@ -139,10 +180,35 @@
   \else
     \shg@ascent=\dimexpr\shg@ascent@opt\relax
   \fi
+  \def\@tempa{zw}%
+  \ifx\shg@pitch@opt\@tempa
+    \shg@pitch=\shg@zw
+  \else
+    \def\@tempa{natural}%
+    \ifx\shg@pitch@opt\@tempa
+      \shg@pitch=\shg@natpitch
+    \else
+      \shg@pitch=\dimexpr\shg@pitch@opt\relax
+    \fi
+  \fi
+  %% trim marks of pLaTeX (jclasses, jsclasses, gentombow, jlreq-trimmarks)
+  %% move the page body by 1in; on the other engines gentombow and
+  %% jlreq-trimmarks use \hoffset and \voffset
+  %% (\iftombow is compared by its \meaning, since an \iftrue token
+  %% would upset the nesting of conditionals while skipping)
+  \shg@tombowshift=\z@
+  \ifx\shg@engine\shg@ptex
+    \edef\@tempa{\expandafter\meaning\csname iftombow\endcsname}%
+    \ifx\@tempa\shg@meaningiftrue
+      \shg@tombowshift=1in
+    \fi
+  \fi
   %% \textwidth is the length of a line and \textheight the extent in
-  %% which lines are stacked, both in yoko and in tate
+  %% which lines are stacked, both in yoko and in tate; a line of n
+  %% characters is (n-1) x pitch + 1zw long
   \ifx\shg@chars@opt\@empty
-    \shg@floordiv\shg@chars\shg@textwd\shg@zw
+    \shg@floordiv\shg@chars{\shg@textwd-\shg@zw}\shg@pitch
+    \advance\shg@chars\@ne
   \else
     \shg@chars=\shg@chars@opt\relax
   \fi
@@ -152,20 +218,21 @@
   \else
     \shg@lines=\shg@lines@opt\relax
   \fi
-  \shg@overwd=\dimexpr\shg@textwd-\shg@zw*\shg@chars\relax
+  \shg@overwd=\dimexpr\shg@textwd-\shg@pitch*(\shg@chars-1)-\shg@zw\relax
   \shg@overht=\dimexpr\shg@textht-\topskip-\shg@bs*(\shg@lines-1)\relax
   \shg@clean\shg@overwd
   \shg@clean\shg@overht
   \ifshg@tate
     \shg@gridwd=\dimexpr\shg@bs*(\shg@lines-1)+\shg@zw\relax
-    \shg@gridht=\dimexpr\shg@zw*\shg@chars\relax
+    \shg@gridht=\dimexpr\shg@pitch*(\shg@chars-1)+\shg@zw\relax
   \else
-    \shg@gridwd=\dimexpr\shg@zw*\shg@chars\relax
+    \shg@gridwd=\dimexpr\shg@pitch*(\shg@chars-1)+\shg@zw\relax
     \shg@gridht=\dimexpr\shg@bs*(\shg@lines-1)+\shg@zw\relax
   \fi
   \shg@info{\ifshg@tate tate\else yoko\fi:
     \the\shg@chars\space chars x \the\shg@lines\space lines,\MessageBreak
     1zw=\the\shg@zw, line feed=\the\shg@bs,\MessageBreak
+    pitch of the squares=\the\shg@pitch,\MessageBreak
     grid=\the\shg@gridwd\space x \the\shg@gridht}%
   \ifdim\shg@overwd=\z@\else
     \shg@info{overflow along the line: \the\shg@overwd\MessageBreak
@@ -177,15 +244,43 @@
       (\shg@inzw\shg@overht zw); the page will not be filled\MessageBreak
       by whole lines}%
   \fi
+  %% the note on a character pitch other than 1zw
+  \let\shg@notetext\@empty
+  \@tempdima=\dimexpr\shg@natpitch-\shg@zw\relax
+  \shg@clean\@tempdima
+  \ifdim\@tempdima=\z@\else
+    \@tempdimb=\dimexpr\shg@natpitch-\shg@zw-\shg@kanjiskip\relax
+    \shg@clean\@tempdimb
+    \edef\shg@notetext{%
+      character pitch = \shg@inzw\shg@natpitch zw, not 1zw
+      (\shg@notekanjiskip); squares at pitch=\shg@pitch@opt}%
+    \shg@info{\shg@notetext}%
+    \edef\shg@notetext{showhanmengrid: \shg@notetext}%
+  \fi
   \ifnum\numexpr\shg@chars*\shg@lines\relax>\z@
     \AddToHook{shipout/background}{\shg@draw}%
   \else
     \shg@warning{No room for the grid (\the\shg@chars\space chars x
       \the\shg@lines\space lines)}%
   \fi}
+\def\shg@ptex{ptex}
+\edef\shg@meaningiftrue{\meaning\iftrue}
+
+%% \shg@notekanjiskip: the parts of the character pitch; \@tempdimb
+%% holds the part given by the JFM
+\def\shg@notekanjiskip{%
+  \string\kanjiskip\space= %
+  \ifdim\shg@kanjiskip<16000pt
+    \shg@inzw\shg@kanjiskip zw%
+    \ifdim\@tempdimb=\z@\else
+      , JFM \ifdim\@tempdimb>\z@+\fi\shg@inzw\@tempdimb zw%
+    \fi
+  \else
+    JFM%
+  \fi}
 
 %% \shg@inzw<dimen>: <dimen> in zw, rounded to 2 decimal places
-\def\shg@inzw#1{\fpeval{round(#1/\shg@zw,2)}}
+\def\shg@inzw#1{\fpeval{round(\the\dimexpr#1\relax/\shg@zw,2)}}
 
 %% The side margin of the current page, as the output routine chooses
 %% it.  (pLaTeX's \@outputpage has a tate branch that would swap the two
@@ -198,9 +293,13 @@
     \oddsidemargin
   \fi}
 
-%% Top left corner of the text area, from the top left corner of the page
-\def\shg@textleft{\dimexpr1in+\hoffset+\shg@sidemargin\relax}
-\def\shg@texttop{\dimexpr1in+\voffset+\topmargin+\headheight+\headsep\relax}
+%% Top left corner of the text area, from the origin of the picture of
+%% shipout/background.  The origin is 1in left of and above the
+%% reference point of the page box, i.e. it moves with \hoffset and
+%% \voffset as the text does, so they are not added here.
+\def\shg@textleft{\dimexpr1in+\shg@tombowshift+\shg@sidemargin\relax}
+\def\shg@texttop{%
+  \dimexpr1in+\shg@tombowshift+\topmargin+\headheight+\headsep\relax}
 
 %% Top left corner of the grid, from the top left corner of the page.
 %%   yoko: the grid begins at the top of the character face of the first
@@ -237,16 +336,23 @@
       \put(0,-\shg@gridht){\framebox(\shg@gridwd,\shg@gridht){}}%
     \fi
     \ifshg@tate\shg@draw@tate\else\shg@draw@yoko\fi}%
+  \ifshg@note\ifx\shg@notetext\@empty\else\shg@draw@note\fi\fi
   \endgroup}
+
+%% The note, just above the head, aligned with the left edge of the grid
+\def\shg@draw@note{%
+  \put(\shg@gridleft,-\dimexpr\shg@texttop-\headheight-\headsep-2pt\relax){%
+    \makebox(0,0)[lb]{\hbox{\ifdefined\yoko\yoko\fi
+      \color{\shg@overflowcolor}\normalfont\ttfamily\tiny\shg@notetext}}}}
 
 %% The squares; (0,0) is the top left corner of the grid
 \def\shg@draw@yoko{%
   \multiput(0,-\shg@zw)(0,-\shg@bs){\shg@lines}{%
-    \multiput(0,0)(\shg@zw,0){\shg@chars}{%
+    \multiput(0,0)(\shg@pitch,0){\shg@chars}{%
       \framebox(\shg@zw,\shg@zw){}}}}
 \def\shg@draw@tate{%
   \multiput(\dimexpr\shg@gridwd-\shg@zw\relax,0)(-\shg@bs,0){\shg@lines}{%
-    \multiput(0,-\shg@zw)(0,-\shg@zw){\shg@chars}{%
+    \multiput(0,-\shg@zw)(0,-\shg@pitch){\shg@chars}{%
       \framebox(\shg@zw,\shg@zw){}}}}
 
 %% The overflow: the part along the line goes after the end of the lines

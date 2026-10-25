@@ -23,6 +23,14 @@ given, stretches inter-character spaces, i.e. the text is not set solid.
 Both horizontal (yoko) and vertical (tate) writing are supported.
 </p>
 <p>
+When the character pitch is not the character size (space between
+ideographs given by <code>\kanjiskip</code> or by the JFM, e.g.
+shibu-aki), a note is drawn in the top margin, and the squares can be
+placed at the actual character pitch.  Trim marks that move the page
+(the <code>tombo</code> option of jclasses, gentombow, jlreq-trimmarks)
+are taken into account.
+</p>
+<p>
 Supported formats/engines: <code>platex</code>, <code>uplatex</code>
 (with <code>dvipdfmx</code>), <code>lualatex</code> with LuaTeX-ja
 (LaTeX2e 2025-06-01 or later).
