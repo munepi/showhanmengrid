@@ -191,7 +191,7 @@ The package measures the natural character pitch of \cs{normalsize} as
   p_{\text{natural}} = \bigl(\text{width of 「漢漢漢」} -
   \text{width of 「漢」}\bigr) / 2,
 \]
-which includes both.  When it differs from 1\,zw, a one-line note is
+which includes both kinds of space.  When it differs from 1\,zw, a one-line note is
 drawn in the top margin of every page, just above the head, and written
 to the log:
 \begin{verbatim}
@@ -246,8 +246,8 @@ warning to the log and draws nothing.
 \item Two-column layout is not supported: the grid spans \cs{textwidth}.
 \item \cs{mag} other than 1000 is not supported (see above).
 \item The character pitch is measured once, with 「漢」 of
-  \cs{normalsize}; a JFM that gives different classes of characters
-  different spaces is represented by the ideographs.
+  \cs{normalsize}; for a JFM that gives different classes of characters
+  different spaces, the value for ideographs is used.
 \item The grid is computed once, at \verb|\begin{document}|; changes of
   \cs{textwidth} or \cs{textheight} later in the document are ignored.
 \end{itemize}

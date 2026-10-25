@@ -45,7 +45,7 @@ Copy `showhanmengrid.sty` to your local TeX tree:
 \usepackage{showhanmengrid}
 ```
 
-The number of characters per line and of lines per page are computed at `\begin{document}` from `\textwidth`, `\textheight`, `\topskip`, and 1zw and `\baselineskip` of `\normalsize`. The writing direction is detected from the document (`\tate` of pTeX, `direction=3` of LuaTeX-ja).
+The number of characters per line and the number of lines per page are computed at `\begin{document}` from `\textwidth`, `\textheight` and `\topskip`, and from 1zw and `\baselineskip` of `\normalsize`. The writing direction is detected from the document (`\tate` of pTeX, `direction=3` of LuaTeX-ja).
 
 Keys can be given as package options or with `\showhanmengridsetup` in the preamble:
 
@@ -80,7 +80,7 @@ Package showhanmengrid Info: overflow along the line: 9.46765pt
 
 ## Character pitch other than 1zw
 
-The text may be set with space between ideographs, e.g. *shibu-aki* (0.25zw, common in tate), either with `\kanjiskip` or, more properly, with the glue of the JFM (TFM). The package measures the natural character pitch of `\normalsize` as the width of 「漢漢漢」 minus that of 「漢」, divided by 2, which includes both. When it is not 1zw, a one-line note is drawn in the top margin of every page and written to the log, e.g.
+The text may be set with space between ideographs, e.g. *shibu-aki* (0.25zw, common in tate), either with `\kanjiskip` or, more properly, with the glue of the JFM (TFM). The package measures the natural character pitch of `\normalsize` as the width of 「漢漢漢」 minus that of 「漢」, divided by 2, which includes both kinds of space. When it is not 1zw, a one-line note is drawn in the top margin of every page and written to the log, e.g.
 
 ```
 showhanmengrid: character pitch = 1.25zw, not 1zw (\kanjiskip = 0zw, JFM +0.25zw); squares at pitch=zw
