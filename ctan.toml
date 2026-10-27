@@ -3,7 +3,7 @@
 # uploader/email are taken from ~/.config/ctango/config.toml or git config.
 
 pkg         = "showhanmengrid"
-ctanPath    = "/macros/latex/contrib/showhanmengrid"
+ctanPath    = "/language/japanese/showhanmengrid"
 summary     = "Show the hanmen grid of Japanese text and its overflow on every page"
 description = '''
 <p>
